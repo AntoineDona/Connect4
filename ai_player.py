@@ -192,6 +192,19 @@ class AIPlayer(Player):
 
             return alignments
 
+        def getSpaceToFill(board,pos):
+            """
+            Retourne le nombre de jetons nécessairess pour remplir une case
+            Renvoie 0 si déjà remplie
+            """
+            space = 0
+            row,col = pos
+            while (row >= 0 and board[col][row] == 0): #Tant que la ligne est vide et qu'elle ne descend pas en dessous de 0
+                space += 1 #on ajoute 1 à l'espace disponible
+                row -= 1 #on descend de ligne
+
+            return space
+
 
         def isLeaf(board: Board,depth,last_pos):
             #en fonction de la profondeur ou fin de partie?
@@ -289,10 +302,10 @@ class AIPlayer(Player):
         for col in columns:
             newboard = deepcopy(board)
             last_pos = (col,newboard.play(self.color,col))
-            new_alpha = maxValue(newboard,alpha_max,beta_min,depth,last_pos)
+            new_alpha = minValue(newboard,alpha_max,beta_min,depth,last_pos)
             # logger.info("newalpha = {}".format(new_alpha))
             if alpha_max < new_alpha:
                 alpha_max = new_alpha
                 final_choice = col
-        logger.info(alpha_max)
+        logger.info("alpha ={}".format(alpha_max))
         return final_choice
