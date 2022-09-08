@@ -21,10 +21,9 @@ class AIPlayer(Player):
     
     def getColumn(self, board):
          # TODO(student): implement this!
-        logger.info(board)
 
         availableColumns = board.getPossibleColumns()
-        logger.info(availableColumns)
+        # logger.info(availableColumns)
         column_id = randint(0,len(availableColumns))
 
         #En fonction de l'état de la grille, pour chaque coup que l'ia peut jouer, calculer 
@@ -37,7 +36,7 @@ class AIPlayer(Player):
         return self.alphabeta(board)
 
     
-    def alphabeta(self,board: Board,maxdepth = 4):
+    def alphabeta(self,board: Board,maxdepth = 3):
         
               
         def getWinner(board, pos):
@@ -49,7 +48,7 @@ class AIPlayer(Player):
             tests.append(board.getRow(pos[1]))
             tests.append(board.getDiagonal(True, pos[0] - pos[1]))
             tests.append(board.getDiagonal(False, pos[0] + pos[1]))
-            logger.info(tests)
+            # logger.info(tests)
 
             for test in tests:
                 color, size = utils.longest(test)
@@ -66,12 +65,14 @@ class AIPlayer(Player):
             Compute the number of alignments possible for a given position and the number of token with the same color in each alignement 
             """
             score = 0
+            winner = getWinner(board,last_pos)
+            logger.info("winner = {}".format(winner))
             
             #si win : +42069
-            if getWinner(board,last_pos) == self.color:
+            if winner == self.color:
                 score += 42069
             #si loose : -42069
-            if getWinner(board,last_pos) == -self.color:
+            if winner == -self.color:
                 score -= 42069
 
             #si la board est full, égalié, on retourne 0
@@ -90,8 +91,11 @@ class AIPlayer(Player):
                     scores[row][col] = (vertical_direction_alignment + horizontal_direction_alignment)*board[col][row]
 
                     row +=1
-            
-            return np.sum(scores)
+
+            logger.info("score = {}".format(np.sum(scores)+score))
+
+            final_score = score + np.sum(scores)
+            return final_score
 
 
         def getVerticalAlignmentPossible(board, pos) :
@@ -217,7 +221,7 @@ class AIPlayer(Player):
             # logger.info("maxval isLeaf")
             if isLeaf(board,depth,last_pos): 
                 # On renvoie l'euristique de la feuille
-
+                logger.info("leaf ={}".format(board))
                 return getEuristic(board,last_pos)
             
             # Sinon on balaie pour toutes less colonne jouabless
@@ -260,6 +264,7 @@ class AIPlayer(Player):
             # logger.info("type of board = {}".format(type(board)))
             # logger.info("minval isLeaf")
             if isLeaf(board,depth,last_pos): # Si on est sur une feuille
+                logger.info("leaf ={}".format(board))
                 return getEuristic(board,last_pos)  # On renvoie l'euristique de la feuille
             
             for column in board.getPossibleColumns():
@@ -267,7 +272,7 @@ class AIPlayer(Player):
                 last_pos = (column, child.play(self.color,column)) #c'est à nous de jouer, donc self.color (l'adversaire choisi le min des max choisispar nous)
                 # logger.info(child)
                 # print("calling maxValue")
-                logger.info(getWinner(board,last_pos))
+                # logger.info(getWinner(board,last_pos))
                 beta = min(beta,maxValue(child,alpha,beta,depth+1,last_pos))
                 if alpha >= beta: # Condition d'elagage
                     return alpha # On coupe la branche
@@ -285,7 +290,7 @@ class AIPlayer(Player):
             newboard = deepcopy(board)
             last_pos = (col,newboard.play(self.color,col))
             new_alpha = maxValue(newboard,alpha_max,beta_min,depth,last_pos)
-            logger.info("newalpha = {}".format(new_alpha))
+            # logger.info("newalpha = {}".format(new_alpha))
             if alpha_max < new_alpha:
                 alpha_max = new_alpha
                 final_choice = col
