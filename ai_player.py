@@ -22,15 +22,14 @@ class AIPlayer(Player):
     def getColumn(self, board):
          # TODO(student): implement this!
 
-        availableColumns = board.getPossibleColumns()
+        # availableColumns = board.getPossibleColumns()
         # logger.info(availableColumns)
-        column_id = randint(0,len(availableColumns))
+        # column_id = randint(0,len(availableColumns))
 
         #En fonction de l'état de la grille, pour chaque coup que l'ia peut jouer, calculer 
         #On étend l'arbre jusqu'à une profondeur h 
         #On calcule à cette profondeur la fonction euristique pour les neuds terminaux ou alors jusqu'à une victoire
         #Back propager avec alpha beta
-
 
         #return availableColumns[column_id]
         return self.alphabeta(board)
@@ -38,7 +37,6 @@ class AIPlayer(Player):
     
     def alphabeta(self,board: Board,maxdepth = 3):
         
-              
         def getWinner(board, pos):
             """
             Returns the player (boolean) who won, or None if nobody won
@@ -70,10 +68,10 @@ class AIPlayer(Player):
             
             #si win : +42069
             if winner == self.color:
-                score += 42069
+                return 1000000
             #si loose : -42069
             if winner == -self.color:
-                score -= 42069
+                return -1000000
 
             #si la board est full, égalié, on retourne 0
             if board.isFull():
@@ -94,8 +92,7 @@ class AIPlayer(Player):
 
             logger.info("score = {}".format(np.sum(scores)+score))
 
-            final_score = score + np.sum(scores)
-            return final_score
+            return np.sum(scores)
 
 
         def getVerticalAlignmentPossible(board, pos) :
@@ -234,16 +231,18 @@ class AIPlayer(Player):
             # logger.info("maxval isLeaf")
             if isLeaf(board,depth,last_pos): 
                 # On renvoie l'euristique de la feuille
-                logger.info("leaf ={}".format(board))
+                if depth <=2:
+                    logger.info("leaf ={}".format(board))
                 return getEuristic(board,last_pos)
             
+            new_alpha = -np.inf
             # Sinon on balaie pour toutes less colonne jouabless
             for column in board.getPossibleColumns():
                 #on créée la nouvelle board
                 child = deepcopy(board)
                 # print("child = ", child)
                 # print("type of child = ", type(child))
-                last_pos=(column, child.play(-self.color,column)) #c'est à l'adversaire de jouer, donc -self.color (on choisi le max des mins choisis par l'adversaire)
+                last_pos=(column, child.play(self.color,column)) #c'est à l'adversaire de jouer, donc -self.color (on choisi le max des mins choisis par l'adversaire)
                 # logger.info(child)
 
                 # logger.info("type of child= {}".format(type(child)))
@@ -251,13 +250,14 @@ class AIPlayer(Player):
 
                 # On calcule alpha qui est le max des mins que l'ennemi choisit, ie choisir la MinValue la plus grande
                 # print("Calling minValues")
-                alpha = max(alpha,minValue(child,alpha,beta,depth+1,last_pos))
+                new_alpha = max(new_alpha,minValue(child,alpha,beta,depth+1,last_pos))
 
                 #Condition de dépassement (alpha est croissante et beta est décroissante, mais alpha < beta. en effet on cherche le alpha le plus grand parmi les beta. si unn beta )
                 #On fait grandir alpha jusqu'à ce qu'il dépasse beta. Bof claire mais ok
-                if alpha >= beta:
-                    return beta #Ssi alpha >= beta on coupe! on saute la branche
-            return alpha
+                if new_alpha >= beta:
+                    return new_alpha #Ssi alpha >= beta on coupe! on saute la branche
+                alpha = max(alpha, new_alpha)
+            return new_alpha
         
 
         
@@ -280,29 +280,30 @@ class AIPlayer(Player):
                 logger.info("leaf ={}".format(board))
                 return getEuristic(board,last_pos)  # On renvoie l'euristique de la feuille
             
+            new_beta = np.inf
             for column in board.getPossibleColumns():
                 child = deepcopy(board)
-                last_pos = (column, child.play(self.color,column)) #c'est à nous de jouer, donc self.color (l'adversaire choisi le min des max choisispar nous)
+                last_pos = (column, child.play(-self.color,column)) #c'est à nous de jouer, donc self.color (l'adversaire choisi le min des max choisispar nous)
                 # logger.info(child)
                 # print("calling maxValue")
                 # logger.info(getWinner(board,last_pos))
-                beta = min(beta,maxValue(child,alpha,beta,depth+1,last_pos))
-                if alpha >= beta: # Condition d'elagage
-                    return alpha # On coupe la branche
-            return beta
+                new_beta = min(new_beta,maxValue(child,alpha,beta,depth+1,last_pos))
+                if alpha >= new_beta: # Condition d'elagage
+                    return new_beta # On coupe la branche
+                beta = min(beta,new_beta)
+            return new_beta
         
 
         #Retourner la colone à jouer. Donc on balaie les colones
         alpha_max = -np.inf
         beta_min = np.inf
         columns = board.getPossibleColumns()
-        depth = 0
         final_choice = 0
         last_pos = (0,0)
         for col in columns:
             newboard = deepcopy(board)
             last_pos = (col,newboard.play(self.color,col))
-            new_alpha = minValue(newboard,alpha_max,beta_min,depth,last_pos)
+            new_alpha = minValue(newboard,alpha_max,beta_min,1,last_pos)
             # logger.info("newalpha = {}".format(new_alpha))
             if alpha_max < new_alpha:
                 alpha_max = new_alpha
