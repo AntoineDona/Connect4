@@ -35,7 +35,7 @@ class AIPlayer(Player):
         return self.alphabeta(board)
 
     
-    def alphabeta(self,board: Board,maxdepth = 3):
+    def alphabeta(self,board: Board,maxdepth = 4):
         
         def getWinner(board, pos):
             """
@@ -58,11 +58,10 @@ class AIPlayer(Player):
                     return None
 
 
-        def getEuristic(board,last_pos) :
+        def getHeuristic(board,last_pos) :
             """ 
             Compute the number of alignments possible for a given position and the number of token with the same color in each alignement 
             """
-            score = 0
             winner = getWinner(board,last_pos)
             logger.info("winner = {}".format(winner))
             
@@ -77,82 +76,80 @@ class AIPlayer(Player):
             if board.isFull():
                 return 0
 
-            scores = np.zeros((6,7))
+            IA_score = get_score(board, self.color)
+            opponent_score = get_score(board, -self.color)
 
-            for col in range(7):
-                row = 0
-                while (row < 6 and board[col][row] != 0 ):
-                    pos = (row,col)
-                    # We check how many alignments are possible for each direction
-                    vertical_direction_alignment = getVerticalAlignmentPossible(board, pos)
-                    horizontal_direction_alignment = getHorizontalAlignmentPossible(board, pos)
-                    scores[row][col] = (vertical_direction_alignment + horizontal_direction_alignment)*board[col][row]
-
-                    row +=1
-
-            logger.info("score = {}".format(np.sum(scores)+score))
-
-            return np.sum(scores)
+            return IA_score - opponent_score
 
 
-        def getVerticalAlignmentPossible(board, pos) :
+        def score_diag_down(board, shift_diag_down, color) :
 
-            """ 
-            Compute the number of alignments possible for a given position and direction 
+            """ Compute score on a given down diag """
 
-            board -> Board : the state of the current game
-            pos -> couple : position of the current token
-            """
-
-            # Unpack position
-            row, col = pos
-
-            # logger.info("ROW = {}".format(row))
-
-            # Get the state in the current column
-            line = board.getCol(col)
-
-            # Variable which will store the amount of friendly tokens already put 
-            friendly_tokens = 0
-            # Variable designating the numero of the box currently observed 
-            box_num = row
-
-            # We go through the tokens already put
-            while (box_num >= 0) and (line[box_num] == 1) :
-                # While we see a friendly token, we count it. We stop when we see a hostile token
-                friendly_tokens += 1
-                # Move on to the box below
-                box_num -= 1
-
-            # Variable that holds the number of free boxes to allow an alignment
-            necessary_boxes = 4 - friendly_tokens
-            # Variable that holds the number of free boxes left
-            free_boxes = Counter(line)[0]
-
-            # If there is not enough space, 0 alignment can be achieved
-            if free_boxes < necessary_boxes :
-                return 0
-            # Else, we return the number of friendly token of the possibe alignment
-            else :
-                return friendly_tokens
+            diag_down_line = board.getDiagonal(up=False, shift=shift_diag_down)
+            diag_down_score = getLineAlignmentsPossible(diag_down_line, color)
+            
+            return diag_down_score
 
 
-        def getHorizontalAlignmentPossible(board, pos) :
+        def score_diag_up(board, shift_diag_up, color) :
+
+            """ Compute score on a given down diag """
+
+            diag_up_line = board.getDiagonal(up=True, shift=shift_diag_up)
+            diag_up_score = getLineAlignmentsPossible(diag_up_line, color)
+            
+            return diag_up_score
+
+
+        def get_score(board, color) :
+
+            score = 0
+
+            for row in range(6) :
+                
+                col = row
+
+                # We compute the score for each direction and sum it
+                horizontal_line = board.getRow(row)
+                horizontal_score = getLineAlignmentsPossible(horizontal_line, color=color)
+                score += horizontal_score
+
+                vertical_line = board.getCol(col)
+                vertical_score = getLineAlignmentsPossible(vertical_line, color=color)
+                score += vertical_score
+
+                score += score_diag_down(board, shift_diag_down=row, color=color)
+                score += score_diag_down(board, shift_diag_down=row + 6, color=color)
+
+            # Diag up score
+            score += score_diag_up(board, shift_diag_up=0, color=color)
+            for shift in range(1, 7) :
+                score += score_diag_up(board, shift_diag_up=shift, color=color)
+                score += score_diag_up(board, shift_diag_up=-shift, color=color)
+
+            # Last column
+            vertical_line = board.getCol(6)
+            vertical_score = getLineAlignmentsPossible(vertical_line, color)
+            score += vertical_score
+
+            return score
+
+
+        def getLineAlignmentsPossible(line, color) :
         
             """ 
-            Compute the number of alignments possible for a given position and direction 
+            Compute the number of alignments possible for a given line
 
-            board -> Board : the state of the current game
-            pos -> couple : position of the current token
+            line -> list : the current line
             """
 
-            # Unpack position
-            row, col = pos
+            # Number of boxes in the line
+            n_boxes = len(line)
 
-            # logger.info("COL = {}".format(col))
-
-            # Get the state in the current column
-            line = board.getRow(row)
+            # If the line is too short, no need to analyze it
+            if n_boxes < 4 :
+                return 0
 
             # We initialize the sliding window : it is on the left of the row
             start_box = 0
@@ -162,45 +159,22 @@ class AIPlayer(Player):
             alignments = 0
 
             # We stop when the sliding window reach the end of the columns
-            while end_box < 7 :
-
-                # logger.info("start_box = {}".format(start_box))
-                # logger.info("end_box = {}".format(end_box))
+            while end_box < n_boxes :
                 
                 window = line[start_box:end_box+1]
-                # logger.info("window = {}".format(window))
-
 
                 # If there is a blue token, it means the alignment is not possible in the sliding window
-                if -1 in window :
-                    # logger.info("alignment = {}".format(0))
+                if -color in window :
                     pass
                 # Else it means an alignment is possible and its strength corresponds to the number of friendly tokens in the window
                 else :
-                    alignments += Counter(window)[1]
-                    # logger.info("alignment = {}".format(Counter(window)[1]))
+                    alignments += Counter(window)[color]
 
                 # We move the sliding window to the right
                 start_box += 1
                 end_box += 1
 
-            # logger.info("alignments = {}".format(alignments))
-            # logger.info("")
-
             return alignments
-
-        def getSpaceToFill(board,pos):
-            """
-            Retourne le nombre de jetons nécessairess pour remplir une case
-            Renvoie 0 si déjà remplie
-            """
-            space = 0
-            row,col = pos
-            while (row >= 0 and board[col][row] == 0): #Tant que la ligne est vide et qu'elle ne descend pas en dessous de 0
-                space += 1 #on ajoute 1 à l'espace disponible
-                row -= 1 #on descend de ligne
-
-            return space
 
 
         def isLeaf(board: Board,depth,last_pos):
@@ -233,7 +207,7 @@ class AIPlayer(Player):
                 # On renvoie l'euristique de la feuille
                 if depth <=2:
                     logger.info("leaf ={}".format(board))
-                return getEuristic(board,last_pos)
+                return getHeuristic(board,last_pos)
             
             new_alpha = -np.inf
             # Sinon on balaie pour toutes less colonne jouabless
@@ -278,7 +252,7 @@ class AIPlayer(Player):
             # logger.info("minval isLeaf")
             if isLeaf(board,depth,last_pos): # Si on est sur une feuille
                 logger.info("leaf ={}".format(board))
-                return getEuristic(board,last_pos)  # On renvoie l'euristique de la feuille
+                return getHeuristic(board,last_pos)  # On renvoie l'euristique de la feuille
             
             new_beta = np.inf
             for column in board.getPossibleColumns():
