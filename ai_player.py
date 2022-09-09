@@ -17,53 +17,45 @@ class AIPlayer(Player):
     beta search to """
 	
     def __init__(self):
+
         self.name = "Alpha Do"
     
     def getColumn(self, board):
-         # TODO(student): implement this!
 
-        # availableColumns = board.getPossibleColumns()
-        # logger.info(availableColumns)
-        # column_id = randint(0,len(availableColumns))
-
-        #En fonction de l'état de la grille, pour chaque coup que l'ia peut jouer, calculer 
-        #On étend l'arbre jusqu'à une profondeur h 
-        #On calcule à cette profondeur la fonction euristique pour les neuds terminaux ou alors jusqu'à une victoire
-        #Back propager avec alpha beta
-
-        #return availableColumns[column_id]
         return self.alphabeta(board)
 
     
-    def alphabeta(self,board: Board,maxdepth = 4):
+    def alphabeta(self, board: Board, maxdepth=4):
         
         def getWinner(board, pos):
+
             """
             Returns the player (boolean) who won, or None if nobody won
             """
+
             tests = []
             tests.append(board.getCol(pos[0]))
             tests.append(board.getRow(pos[1]))
             tests.append(board.getDiagonal(True, pos[0] - pos[1]))
             tests.append(board.getDiagonal(False, pos[0] + pos[1]))
-            # logger.info(tests)
 
             for test in tests:
                 color, size = utils.longest(test)
-                if size >= 4:
-                    if color == 1:
+                if size >= 4 :
+                    if color == 1 :
                         return 1
-                    elif color == -1:
+                    elif color == -1 :
                         return -1
                     return None
 
 
-        def getHeuristic(board,last_pos) :
+        def getHeuristic(board, last_pos) :
+            
             """ 
             Compute the number of alignments possible for a given position and the number of token with the same color in each alignement 
             """
-            winner = getWinner(board,last_pos)
-            logger.info("winner = {}".format(winner))
+
+            winner = getWinner(board, last_pos)
             
             #si win : +42069
             if winner == self.color:
@@ -77,9 +69,8 @@ class AIPlayer(Player):
                 return 0
 
             IA_score = get_score(board, self.color)
-            opponent_score = get_score(board, -self.color)
 
-            return IA_score - opponent_score
+            return IA_score
 
 
         def score_diag_down(board, shift_diag_down, color) :
@@ -87,9 +78,12 @@ class AIPlayer(Player):
             """ Compute score on a given down diag """
 
             diag_down_line = board.getDiagonal(up=False, shift=shift_diag_down)
-            diag_down_score = getLineAlignmentsPossible(diag_down_line, color)
-            
-            return diag_down_score
+            if isImportant(diag_down_line) and (len(diag_down_line) >= 4) :
+                # logger.info("Diag down line {} = {}".format(shift_diag_down, diag_down_line))
+                diag_down_score = getLineAlignmentsPossible(diag_down_line, color)
+                return diag_down_score
+            else :
+                return 0
 
 
         def score_diag_up(board, shift_diag_up, color) :
@@ -97,12 +91,17 @@ class AIPlayer(Player):
             """ Compute score on a given down diag """
 
             diag_up_line = board.getDiagonal(up=True, shift=shift_diag_up)
-            diag_up_score = getLineAlignmentsPossible(diag_up_line, color)
-            
-            return diag_up_score
+            if isImportant(diag_up_line) and (len(diag_up_line) >= 4) :
+                # logger.info("Diag up line {} = {}".format(shift_diag_up, diag_up_line))
+                diag_up_score = getLineAlignmentsPossible(diag_up_line, color)
+                return diag_up_score
+            else :
+                return 0
 
 
         def get_score(board, color) :
+
+            """ Compute the score of the entire board """
 
             score = 0
 
@@ -112,12 +111,16 @@ class AIPlayer(Player):
 
                 # We compute the score for each direction and sum it
                 horizontal_line = board.getRow(row)
-                horizontal_score = getLineAlignmentsPossible(horizontal_line, color=color)
-                score += horizontal_score
+                if isImportant(horizontal_line) :
+                    # logger.info("Horizontal line {} = {}".format(row, horizontal_line))
+                    horizontal_score = getLineAlignmentsPossible(horizontal_line, color=color)
+                    score += horizontal_score
 
                 vertical_line = board.getCol(col)
-                vertical_score = getLineAlignmentsPossible(vertical_line, color=color)
-                score += vertical_score
+                if isImportant(vertical_line) :
+                    # logger.info("Vertical line {} = {}".format(col, vertical_line))
+                    vertical_score = getLineAlignmentsPossible(vertical_line, color=color)
+                    score += vertical_score
 
                 score += score_diag_down(board, shift_diag_down=row, color=color)
                 score += score_diag_down(board, shift_diag_down=row + 6, color=color)
@@ -130,10 +133,35 @@ class AIPlayer(Player):
 
             # Last column
             vertical_line = board.getCol(6)
-            vertical_score = getLineAlignmentsPossible(vertical_line, color)
-            score += vertical_score
+            if isImportant(vertical_line) :
+                # logger.info("Vertical line {} = {}".format(col, vertical_line))
+                vertical_score = getLineAlignmentsPossible(vertical_line, color)
+                score += vertical_score
 
             return score
+
+
+        def isEmpty(line) :
+
+            """ Indicates if a given line is empty """
+            
+            n_boxes = len(line)
+
+            return Counter(line)[0] == n_boxes
+
+
+        def isFull(line) :
+
+            """ Indicates if a given line is full """
+
+            return not(0 in line)
+
+
+        def isImportant(line) :
+
+            """ Indicates if a line is important, i.e. not empty nor full """
+
+            return not(isFull(line) or isEmpty(line))
 
 
         def getLineAlignmentsPossible(line, color) :
@@ -146,10 +174,6 @@ class AIPlayer(Player):
 
             # Number of boxes in the line
             n_boxes = len(line)
-
-            # If the line is too short, no need to analyze it
-            if n_boxes < 4 :
-                return 0
 
             # We initialize the sliding window : it is on the left of the row
             start_box = 0
@@ -178,11 +202,12 @@ class AIPlayer(Player):
 
 
         def isLeaf(board: Board,depth,last_pos):
-            #en fonction de la profondeur ou fin de partie?
+
             """
-            isNode évalue si un point est une feuille
+            isLeaf évalue si un point est une feuille
             retourne un booleen
             """
+
             return depth >= maxdepth or getWinner(board,last_pos) != None or board.isFull()
         
 
@@ -202,28 +227,18 @@ class AIPlayer(Player):
             """
         
             # Si on est sur une feuille
-            # logger.info("maxval isLeaf")
             if isLeaf(board,depth,last_pos): 
                 # On renvoie l'euristique de la feuille
-                if depth <=2:
-                    logger.info("leaf ={}".format(board))
                 return getHeuristic(board,last_pos)
             
             new_alpha = -np.inf
             # Sinon on balaie pour toutes less colonne jouabless
             for column in board.getPossibleColumns():
-                #on créée la nouvelle board
+                # On créée la nouvelle board
                 child = deepcopy(board)
-                # print("child = ", child)
-                # print("type of child = ", type(child))
                 last_pos=(column, child.play(self.color,column)) #c'est à l'adversaire de jouer, donc -self.color (on choisi le max des mins choisis par l'adversaire)
-                # logger.info(child)
-
-                # logger.info("type of child= {}".format(type(child)))
-                # logger.info("child= {}".format(child))
 
                 # On calcule alpha qui est le max des mins que l'ennemi choisit, ie choisir la MinValue la plus grande
-                # print("Calling minValues")
                 new_alpha = max(new_alpha,minValue(child,alpha,beta,depth+1,last_pos))
 
                 #Condition de dépassement (alpha est croissante et beta est décroissante, mais alpha < beta. en effet on cherche le alpha le plus grand parmi les beta. si unn beta )
@@ -248,19 +263,14 @@ class AIPlayer(Player):
             - beta: meilleure evaluation courante ENNEMIE
 
             """
-            # logger.info("type of board = {}".format(type(board)))
-            # logger.info("minval isLeaf")
+
             if isLeaf(board,depth,last_pos): # Si on est sur une feuille
-                logger.info("leaf ={}".format(board))
                 return getHeuristic(board,last_pos)  # On renvoie l'euristique de la feuille
             
             new_beta = np.inf
             for column in board.getPossibleColumns():
                 child = deepcopy(board)
                 last_pos = (column, child.play(-self.color,column)) #c'est à nous de jouer, donc self.color (l'adversaire choisi le min des max choisispar nous)
-                # logger.info(child)
-                # print("calling maxValue")
-                # logger.info(getWinner(board,last_pos))
                 new_beta = min(new_beta,maxValue(child,alpha,beta,depth+1,last_pos))
                 if alpha >= new_beta: # Condition d'elagage
                     return new_beta # On coupe la branche
@@ -278,9 +288,7 @@ class AIPlayer(Player):
             newboard = deepcopy(board)
             last_pos = (col,newboard.play(self.color,col))
             new_alpha = minValue(newboard,alpha_max,beta_min,1,last_pos)
-            # logger.info("newalpha = {}".format(new_alpha))
             if alpha_max < new_alpha:
                 alpha_max = new_alpha
                 final_choice = col
-        logger.info("alpha ={}".format(alpha_max))
         return final_choice
