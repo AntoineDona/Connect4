@@ -8,9 +8,6 @@ from copy import deepcopy
 from collections import Counter
 import utils 
 
-# *********** LOGGER ***********
-import config
-logger = config.LOGGER 
 
 class AIPlayer(Player):
     """This player should implement a heuristic along with a min-max and alpha
@@ -79,7 +76,6 @@ class AIPlayer(Player):
 
             diag_down_line = board.getDiagonal(up=False, shift=shift_diag_down)
             if isImportant(diag_down_line) and (len(diag_down_line) >= 4) :
-                # logger.info("Diag down line {} = {}".format(shift_diag_down, diag_down_line))
                 diag_down_score = getLineAlignmentsPossible(diag_down_line, color)
                 return diag_down_score
             else :
@@ -92,7 +88,6 @@ class AIPlayer(Player):
 
             diag_up_line = board.getDiagonal(up=True, shift=shift_diag_up)
             if isImportant(diag_up_line) and (len(diag_up_line) >= 4) :
-                # logger.info("Diag up line {} = {}".format(shift_diag_up, diag_up_line))
                 diag_up_score = getLineAlignmentsPossible(diag_up_line, color)
                 return diag_up_score
             else :
@@ -112,13 +107,11 @@ class AIPlayer(Player):
                 # We compute the score for each direction and sum it
                 horizontal_line = board.getRow(row)
                 if isImportant(horizontal_line) :
-                    # logger.info("Horizontal line {} = {}".format(row, horizontal_line))
                     horizontal_score = getLineAlignmentsPossible(horizontal_line, color=color)
                     score += horizontal_score
 
                 vertical_line = board.getCol(col)
                 if isImportant(vertical_line) :
-                    # logger.info("Vertical line {} = {}".format(col, vertical_line))
                     vertical_score = getLineAlignmentsPossible(vertical_line, color=color)
                     score += vertical_score
 
@@ -134,7 +127,6 @@ class AIPlayer(Player):
             # Last column
             vertical_line = board.getCol(6)
             if isImportant(vertical_line) :
-                # logger.info("Vertical line {} = {}".format(col, vertical_line))
                 vertical_score = getLineAlignmentsPossible(vertical_line, color)
                 score += vertical_score
 
